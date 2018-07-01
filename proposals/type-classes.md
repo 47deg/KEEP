@@ -269,10 +269,10 @@ fun addInts(): Int = add(1, 2)
 
 1. The compiler first looks at the file the interface is defined in. If it finds exactly one implementation it uses that instance.
 2. If it fails to find an implementation in the interface's file, it then looks at the files of the implemented types. For each type class parameter check the file it was defined in. If exactly one implementation is found use that instance.
-3. If no matching implementation is found in either of these places fail to compile.
+3. If no matching implementation is found in either of these places, fail to compile.
 4. If more than one matching implementation is found, fail to compile and indicate that there or conflicting instances.
 
-Some of these examples where originally proposed by Roman Elizarov and the Kategory contributors where these features where originally discussed https://github.com/Kotlin/KEEP/pull/87
+Some of these examples were originally proposed by Roman Elizarov and the Kategory contributors, where these features where originally discussed https://github.com/Kotlin/KEEP/pull/87
 
 ## Appendix A: Orphan Implementations
 
