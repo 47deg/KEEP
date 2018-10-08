@@ -253,7 +253,7 @@ The above instances are each defined alongside their respective type definitions
 
 To determine whether a typeclass definition is a valid type-side implementation we perform the following check:
 
-1. A "local type" is any type (but not typealias) defined in the current file (e.g. everything defined in `data.bar` if we're evaluating `data.collections.bar`).
+1. A "local type" is any type (but not typealias) defined in the current file (e.g. everything defined in `data.collections.bar` if we're evaluating `data.collections.bar`).
 2. A generic type parameter is "covered" by a type if it occurs within that type, e.g. `MyType` covers `T` in `MyType<T>` but not `Pair<T, MyType>`.
 3. Write out the parameters to the type class in order.
 4. The parameters must include a type defined in this file.
@@ -284,7 +284,7 @@ fun <a> duplicate(a : A, with M: Monoid<A>): A = a.combine(a)
 The invocation `a.combine(a)` requires a `Monoid<A>` and since one is passed as an argument to `duplicate`, it uses that one.
 
 2. In case it fails, it inspects the following places, sequentially, until it is able to find a valid unique instance for the typeclass:
-    a. The current package (where the invocation is taking place)
+    a. The current package (where the invocation is taking place), as long as the `extension` is `internal`.
     b. The companion object of the type parameter(s) in the type class (e.g. in `Monoid<A>`, it looks into `A`'s companion object).
     c. The companion object of the type class.
     d. The subpackages of the package where the type parameter(s) in the type class is defined.
