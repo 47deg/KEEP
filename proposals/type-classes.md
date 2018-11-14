@@ -2,9 +2,9 @@
 
 * **Type**: Design proposal
 * **Author**: Raul Raja
-* **Contributors**: Francesco Vasco, Claire Neveu
+* **Contributors**: Francesco Vasco, Claire Neveu, Tomás Ruiz López
 * **Status**: New
-* **Prototype**: -
+* **Prototype**: [initial implementation](https://github.com/arrow-kt/kotlin/pull/6)
 
 ## Summary
 
@@ -27,7 +27,7 @@ The introduction of type classes allow the substitution of `reified` generic fun
 We propose to use the existing `interface` semantics, allowing for generic definition of type classes and their instances in the same style interfaces are defined.
 
 ```kotlin
-extension interface Monoid<A> {
+interface Monoid<A> {
     fun A.combine(b: A): A
     val empty: A
 }
@@ -162,7 +162,7 @@ Here `F<_>` refers to a type constructor, meaning a type that has a hole within 
 A use of this declaration in a polymorphic function would look like:
 
 ```kotlin
-fun <F<_>, A, B> transform(fa: F<A>, f: (A) -> B, with Functor<F>): F<B> = F.map(fa, f)
+fun <F<_>, A, B> transform(fa: F<A>, f: (A) -> B, with Functor<F>): F<B> = fa.map(f)
 
 transform(Option(1), { it + 1 }) // Option(2)
 transform("", { it + "b" }) // Does not compile: `String` is not type constructor with shape F<_>
@@ -171,7 +171,10 @@ transform(listOf(1), { it + 1 }) // does not compile: No `Functor<List>` instanc
 
 ## Language changes
 
-* Add `with` to require evidence of type class instances in both function and class/object declarations as demonstrated by previous and below examples:
+- Add `with` to require instances evidences in both function and class/object declarations
+- Add `extension` to provide instance evidences for a given type class
+
+As demonstrated by previous and below examples:
 
 ```kotlin
 extension class OptionMonoid<A>(with M: Monoid<A>) : Monoid<Option<A>> // class position using parameter "M"
@@ -185,10 +188,12 @@ fun <A> add(a: A, b: A, with Monoid<A>): A = a.combine(b) // function position u
 
 Classical interfaces only permit their implementation at the site of a type definition. Type classes typically relax this rule and allow implementations outside of the type definition. When relaxing this rule it is important to preserve the coherency we take for granted with classical interfaces.
 
-For those reasons type class instances must be declared in one of two places:
+For those reasons type class instances must be declared in one of these places:
 
-1. In the same file as the type class definition (interface-side implementation)
-2. In the same file as the type being implemented (type-side implementation)
+1. In the companion object of the type class (interface-side implementation).
+2. In the companion object of the type implementing the type class (type-side implementation).
+3. In a subpackage of the package where the type class is defined.
+4. In a subpackage of the package where the type implementing the type class is defined.
 
 All other instances are orphan instances and are not allowed. See [Appendix A](#Appendix-A) for a modification to this proposal that allows for orphan instances.
 
@@ -201,13 +206,16 @@ This definition site is simple to implement and requires no rules except that th
 ```kotlin
 package foo.collections
 
-extension interface Monoid<A> {
+interface Monoid<A> {
    ...
+   companion object {
+      extension object IntMonoid : Monoid<Int> { ... }
+   }
 }
 ```
 
 ```kotlin
-package foo.collections
+package foo.collections.instances
 
 extension object : Monoid<String> {
    ...
@@ -221,13 +229,13 @@ This definition site poses additional complications when you consider multi-para
 ```kotlin
 package foo.collections
 
-extension interface Isomorphism<A, B> {
+interface Isomorphism<A, B> {
    ...
 }
 ```
 
 ```kotlin
-package data.foo
+package data.collections.foo
 
 data class Foo(...)
 extension class<A> : Isomorphism<Foo, A> {
@@ -236,7 +244,7 @@ extension class<A> : Isomorphism<Foo, A> {
 ```
 
 ```kotlin
-package data.bar
+package data.collections.bar
 
 data class Bar(...)
 extension class<A> : Isomorphism<A, Bar> {
@@ -248,8 +256,9 @@ The above instances are each defined alongside their respective type definitions
 
 To determine whether a type class definition is a valid type-side implementation we perform the following check:
 
-1. A "local type" is any type (but not typealias) defined in the current file (e.g. everything defined in `data.bar` if we're evaluating `data.bar`).
-2. A generic type parameter is "covered" by a type if it occurs within that type (e.g. `MyType` covers `T` in `MyType<T>` but not `Pair<T, MyType>`).
+
+1. A "local type" is any type (but not typealias) defined in the current file (e.g. everything defined in `data.collections.bar` if we're evaluating `data.collections.bar`).
+2. A generic type parameter is "covered" by a type if it occurs within that type, e.g. `MyType` covers `T` in `MyType<T>` but not `Pair<T, MyType>`.
 3. Write out the parameters to the type class in order.
 4. The parameters must include a type defined in this file.
 5. Any generic type parameters must occur after the first instance of a local type or be covered by a local type.
@@ -272,12 +281,24 @@ Call site:
 fun addInts(): Int = add(1, 2)
 ```
 
-1. The compiler first looks at the file the interface is defined in. If it finds exactly one implementation it uses that instance.
-2. If it fails to find an implementation in the interface's file, it then looks at the files of the implemented types. For each type class parameter it checks the file it was defined in, and if exactly one implementation is found it uses that instance.
-3. If no matching implementation is found in either of these places then the code fails to compile.
-4. If more than one matching implementation is found, then the code fails to compile and the compiler indicates that there are conflicting instances.
+1. The compiler first looks at the function context where the invocation is happening. If a function argument matches the required instance for a typeclass, it uses that instance; e.g.:
 
-Some of these examples were proposed by Roman Elizarov and the Kategory contributors where these features were originally discussed: https://github.com/Kotlin/KEEP/pull/87
+```kotlin
+fun <a> duplicate(a : A, with M: Monoid<A>): A = a.combine(a)
+```
+
+The invocation `a.combine(a)` requires a `Monoid<A>` and since one is passed as an argument to `duplicate`, it uses that one.
+
+2. In case it fails, it inspects the following places, sequentially, until it is able to find a valid unique instance for the typeclass:
+    a. The current package (where the invocation is taking place), as long as the `extension` is `internal`.
+    b. The companion object of the type parameter(s) in the type class (e.g. in `Monoid<A>`, it looks into `A`'s companion object).
+    c. The companion object of the type class.
+    d. The subpackages of the package where the type parameter(s) in the type class is defined.
+    e. The subpackages of the package where the type class is defined.
+3. If no matching implementation is found in either of these places fail to compile.
+4. If more than one matching implementation is found, fail to compile and indicate that there or conflicting instances.
+
+Some of these examples were originally proposed by Roman Elizarov and the Arrow contributors where these features were originally discussed https://github.com/Kotlin/KEEP/pull/87
 
 ## Appendix A: Orphan implementations
 
