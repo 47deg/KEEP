@@ -171,10 +171,10 @@ transform(listOf(1), { it + 1 }) // does not compile: No `Functor<List>` instanc
 
 ## Language changes
 
-- Add `with` to require instances evidences in both function and class/object declarations
-- Add `extension` to provide instance evidences for a given type class
+* Add `with` to require evidence of type class instances in both function and class/object declarations.
+* Add `extension` to provide instance evidence for a given type class.
 
-As demonstrated by previous and below examples:
+Usage of these language changes are demonstrated by the previous and below examples:
 
 ```kotlin
 extension class OptionMonoid<A>(with M: Monoid<A>) : Monoid<Option<A>> // class position using parameter "M"
@@ -256,9 +256,8 @@ The above instances are each defined alongside their respective type definitions
 
 To determine whether a type class definition is a valid type-side implementation we perform the following check:
 
-
-1. A "local type" is any type (but not typealias) defined in the current file (e.g. everything defined in `data.collections.bar` if we're evaluating `data.collections.bar`).
-2. A generic type parameter is "covered" by a type if it occurs within that type, e.g. `MyType` covers `T` in `MyType<T>` but not `Pair<T, MyType>`.
+1. A "local type" is any type (but not type alias) defined in the current file (e.g. everything defined in `data.collections.bar` if we're evaluating `data.collections.bar`).
+2. A generic type parameter is "covered" by a type if it occurs within that type (e.g. `MyType` covers `T` in `MyType<T>` but not `Pair<T, MyType>`).
 3. Write out the parameters to the type class in order.
 4. The parameters must include a type defined in this file.
 5. Any generic type parameters must occur after the first instance of a local type or be covered by a local type.
@@ -281,24 +280,26 @@ Call site:
 fun addInts(): Int = add(1, 2)
 ```
 
-1. The compiler first looks at the function context where the invocation is happening. If a function argument matches the required instance for a typeclass, it uses that instance; e.g.:
+1. The compiler first looks at the function context where the invocation is happening. If a function argument matches the required instance for a type class, it uses that instance; e.g.:
 
-```kotlin
-fun <a> duplicate(a : A, with M: Monoid<A>): A = a.combine(a)
-```
+    ```kotlin
+    fun <a> duplicate(a : A, with M: Monoid<A>): A = a.combine(a)
+    ```
 
-The invocation `a.combine(a)` requires a `Monoid<A>` and since one is passed as an argument to `duplicate`, it uses that one.
+    The invocation `a.combine(a)` requires a `Monoid<A>` and since one is passed as an argument to `duplicate`, it uses that one.
 
-2. In case it fails, it inspects the following places, sequentially, until it is able to find a valid unique instance for the typeclass:
-    a. The current package (where the invocation is taking place), as long as the `extension` is `internal`.
-    b. The companion object of the type parameter(s) in the type class (e.g. in `Monoid<A>`, it looks into `A`'s companion object).
-    c. The companion object of the type class.
-    d. The subpackages of the package where the type parameter(s) in the type class is defined.
-    e. The subpackages of the package where the type class is defined.
-3. If no matching implementation is found in either of these places fail to compile.
-4. If more than one matching implementation is found, fail to compile and indicate that there or conflicting instances.
+2. In case it fails, it inspects the following places, sequentially, until it is able to find a valid unique instance for the type class:
 
-Some of these examples were originally proposed by Roman Elizarov and the Arrow contributors where these features were originally discussed https://github.com/Kotlin/KEEP/pull/87
+    * The current package (where the invocation is taking place), as long as the `extension` is `internal`.
+    * The companion object of the type parameter(s) in the type class (e.g. in `Monoid<A>`, it looks into `A`'s companion object).
+    * The companion object of the type class.
+    * The subpackages of the package where the type parameter(s) in the type class is defined.
+    * The subpackages of the package where the type class is defined.
+  
+3. If no matching implementation is found in either of these places then the code fails to compile.
+4. If more than one matching implementation is found, then the code fails to compile and the compiler indicates that there are conflicting instances.
+
+Some of these examples were proposed by Roman Elizarov and the Arrow contributors where these features were originally discussed: https://github.com/Kotlin/KEEP/pull/87
 
 ## Appendix A: Orphan implementations
 
