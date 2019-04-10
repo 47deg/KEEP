@@ -98,13 +98,13 @@ Note that this does not remove the need to use `inline reified` where one tries 
 
 ```kotlin
 extension class Foo<A> {
-   val someKlazz = foo<A>() // won't compile because class disallow reified type args
+    val someKlazz = foo<A>() // won't compile because class disallow reified type args
 }
 ```
 
 ```kotlin
 extension class Foo<A> {
-   val someKlazz = fooTC<A>() // works and does not require to be inside an `inline reified` context
+    val someKlazz = fooTC<A>() // works and does not require to be inside an `inline reified` context
 }
 ```
 
@@ -117,16 +117,15 @@ package optionext
 
 extension class OptionMonoid<A>(with Monoid<A>): Monoid<Option<A>> {
 
-  val empty: Option<A> = None
+    val empty: Option<A> = None
 
-  fun Option.combine(ob: Option<A>): Option<A> =
-    when (this) {
-      is Some<A> -> when (ob) {
-                      is Some<A> -> Some(this.value.combine(b.value)) //works because there is evidence of a Monoid<A>
-                      is None -> ob
-                    }
-      is None -> this
-  }
+    fun Option.combine(ob: Option<A>): Option<A> = when (this) {
+        is Some<A> -> when (ob) {
+            is Some<A> -> Some(this.value.combine(b.value)) //works because there is evidence of a Monoid<A>
+            is None -> ob
+        }
+        is None -> this
+    }
 
 }
 ```
@@ -148,12 +147,11 @@ A syntax that would allow for higher kinds in these definitions may look like th
 
 ```kotlin
 extension interface FunctionK<F<_>, G<_>> {
-  fun <A> invoke(fa: F<A>): G<A>
+    fun <A> invoke(fa: F<A>): G<A>
 }
 
 extension object : FunctionK<Option, List> {
-  fun <A> invoke(fa: Option<A>): List<A> =
-    fa.fold({ emptyList() }, { listOf(it) })
+    fun <A> invoke(fa: Option<A>): List<A> = fa.fold({ emptyList() }, { listOf(it) })
 }
 ```
 
@@ -207,10 +205,10 @@ This definition site is simple to implement and requires no rules except that th
 package foo.collections
 
 interface Monoid<A> {
-   ...
-   companion object {
-      extension object IntMonoid : Monoid<Int> { ... }
-   }
+    ...
+    companion object {
+       extension object IntMonoid : Monoid<Int> { ... }
+    }
 }
 ```
 
@@ -218,7 +216,7 @@ interface Monoid<A> {
 package foo.collections.instances
 
 extension object : Monoid<String> {
-   ...
+    ...
 }
 ```
 
@@ -230,7 +228,7 @@ This definition site poses additional complications when you consider multi-para
 package foo.collections
 
 interface Isomorphism<A, B> {
-   ...
+    ...
 }
 ```
 
@@ -239,7 +237,7 @@ package data.collections.foo
 
 data class Foo(...)
 extension class<A> : Isomorphism<Foo, A> {
-   ...
+    ...
 }
 ```
 
@@ -248,7 +246,7 @@ package data.collections.bar
 
 data class Bar(...)
 extension class<A> : Isomorphism<A, Bar> {
-   ...
+    ...
 }
 ```
 
@@ -320,7 +318,7 @@ A simple way to allow orphan implementations is to replace the file-based restri
 package foo.collections
 
 extension class Monoid<A> {
-   ...
+    ...
 }
 ```
 
@@ -329,7 +327,7 @@ extension class Monoid<A> {
 package foo.collections
 
 extension object : Monoid<Int> {
-   ...
+    ...
 }
 ```
 
