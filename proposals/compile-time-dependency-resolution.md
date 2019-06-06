@@ -215,7 +215,7 @@ extension class GroupRepository<A>(with val repoA: Repository<A>) : Repository<G
 The above extension provides evidence of a `Repository<Group<A>>` as long as there is a `Repository<A>` in scope. The Call site would look like:
 
 ```kotlin
-fun <A> fetchGroup(with repo: GroupRepository<A>) = loadAll()
+fun <A> fetchGroup(with repo: Repository<Group<A>>) = loadAll()
 
 fun main() {
   fetchGroup<User>() // Succeeds! There's evidence of Repository<Group<A>> and Repository<User> provided in scope.
